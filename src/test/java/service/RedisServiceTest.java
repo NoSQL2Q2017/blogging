@@ -57,4 +57,53 @@ public class RedisServiceTest {
         zaffa.setUsername("differentUsername");
         redisService.addUser(zaffa);
     }
+
+    @Test
+    public void userLogInWithIpAlreadyUsedGenerateCookieWith10MinutesTTL(){
+        UserDao zaffa = this.jedisHelper.getUserZaffa();
+        String ip = "192.168.1.23";
+        redisService.addUser(zaffa);
+        this.jedis.sadd("log_in:username:" + zaffa.getUsername(), ip);
+        redisService.logUser(zaffa.getUsername(), zaffa.getHashedPassword(), ip);
+
+        Assert.assertEquals(zaffa.getUsername(), this.jedis.get("log_in:cookie:" + zaffa.getUsername().hashCode()));
+        Assert.assertEquals(600, this.jedis.ttl("log_in:cookie:" + zaffa.getUsername().hashCode()),10);
+    }
+
+    @Test
+    public void userLogInWithNewIpThrowsException(){
+        expectedEx.expect(RuntimeException.class);
+        expectedEx.expectMessage("Send email");
+
+
+        UserDao zaffa = this.jedisHelper.getUserZaffa();
+        String ip = "192.168.1.23";
+        redisService.addUser(zaffa);
+        redisService.logUser(zaffa.getUsername(), zaffa.getHashedPassword(), ip);
+    }
+
+
+    @Test
+    public void userLogInWithWrongPasswordThrowsException(){
+        expectedEx.expect(RuntimeException.class);
+        expectedEx.expectMessage("User or password does not exist");
+
+
+        UserDao zaffa = this.jedisHelper.getUserZaffa();
+        String ip = "192.168.1.23";
+        redisService.addUser(zaffa);
+        redisService.logUser(zaffa.getUsername(), "wrongPassword", ip);
+    }
+
+
+    @Test
+    public void userLogInWithNonExistentUsernameThrowsException(){
+        expectedEx.expect(RuntimeException.class);
+        expectedEx.expectMessage("User or password does not exist");
+
+
+        UserDao zaffa = this.jedisHelper.getUserZaffa();
+        String ip = "192.168.1.23";
+        redisService.logUser(zaffa.getUsername(), zaffa.getHashedPassword(), ip);
+    }
 }

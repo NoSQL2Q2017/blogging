@@ -33,19 +33,20 @@ public class RedisService {
     public void logUser(String username, String hashedPassword, String ip) {
         String jsonUser = jedis.get("user:username:" + username);
         Optional<UserDao> userDao = this.getDao(jsonUser, UserDao.class);
-        if(userDao.isPresent() || !userDao.get().getHashedPassword().equals(hashedPassword)) {
+        if(!userDao.isPresent() || !userDao.get().getHashedPassword().equals(hashedPassword)) {
             throw new RuntimeException("User or password does not exist");
         }
         if (jedis.sismember("log_in:username:" + username, ip)) {
             jedis.setex("log_in:cookie:" + username.hashCode(), TEN_MINUTES_TTL, username);
         } else {
             //send email with confirmation
+            throw new RuntimeException("Send email");
             //think a way to test
         }
     }
 
     private <T> Optional<T> getDao(String jsonUser, Class<T> clazz) {
-        if(jsonUser == null) Optional.empty();
+        if(jsonUser == null) return Optional.empty();
         try {
             return Optional.of(objectMapper.readValue(jsonUser, clazz));
         } catch (IOException e) {
