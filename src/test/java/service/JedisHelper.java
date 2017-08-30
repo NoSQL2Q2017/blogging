@@ -14,7 +14,7 @@ public class JedisHelper {
     }
 
     public UserDao getUserMaxi() {
-        return new UserDao("zaffa", "d3p3g4r","mz@gmail.com");
+        return new UserDao("maxi", "d3p3g4r","mz@gmail.com");
     }
 
     public PostDao getPaper() {

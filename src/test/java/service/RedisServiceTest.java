@@ -158,4 +158,17 @@ public class RedisServiceTest {
         Assert.assertTrue(publishedPosts.isEmpty());
     }
 
+    //User autocomplete
+    @Test
+    public void userAutocompleteWithTwoUsers(){
+        this.redisService.addUser(this.jedisHelper.getUserZaffa());
+        this.redisService.addUser(this.jedisHelper.getUserMaxi());
+
+        List<String> autocompletedUsernames = this.redisService.getUsersAutocomplete("a");
+
+        Assert.assertEquals(2, autocompletedUsernames.size());
+        Assert.assertTrue(autocompletedUsernames.contains(this.jedisHelper.getUserZaffa().getUsername()));
+        Assert.assertTrue(autocompletedUsernames.contains(this.jedisHelper.getUserMaxi().getUsername()));
+    }
+
 }

@@ -5,10 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dao.PostDao;
 import dao.PublishedPostDao;
 import dao.UserDao;
+import dao.UserProfile;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.ScanParams;
 import redis.clients.jedis.Transaction;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -76,6 +79,7 @@ public class RedisService {
 
     public void publishPost(UserDao owner, PostDao postDao) {
         PublishedPostDao publishedPostDao = new PublishedPostDao(postDao);
+        jedis.set("post:published:date:username:"+ owner.getUsername(), publishedPostDao.getPublishedDate());
         jedis.lpush("post:published:username:" + owner.getUsername(), this.getJsonString(publishedPostDao));
     }
 
@@ -85,7 +89,34 @@ public class RedisService {
     }
 
     public List<PublishedPostDao> getUserpublishedPosts(UserDao owner) {
-        return this.getDaoList(jedis.lrange("post:published:username:" + owner.getUsername(), 0, -1), PublishedPostDao.class);
+        return this.getUserpublishedPostsByRange(owner, 0, -1);
+    }
+
+    public List<PublishedPostDao> getUserpublishedPostsByRange(UserDao owner, int lowerBound, int upperBound) {
+        return this.getDaoList(jedis.lrange("post:published:username:" + owner.getUsername(), lowerBound, upperBound), PublishedPostDao.class);
+    }
+
+    //User profile
+    //Se podría haber usado scan, pero había que ver que onda con el cursor que guardabas
+    public UserProfile getUserNewUserProfile(UserDao owner, BigDecimal postPerPage) {
+        Long totalPublishedPost = jedis.llen("post:published:username:" + owner.getUsername());
+        int pagesSize = new BigDecimal(totalPublishedPost).divide(postPerPage, BigDecimal.ROUND_UP).intValue();
+        List<PublishedPostDao> publishedPost =  getUserpublishedPostsByRange(owner, 0, postPerPage.intValue() -1);
+        String lastPublishedPostDate = jedis.get("post:published:date:username:" + owner.getUsername());
+        return new UserProfile(owner, publishedPost, lastPublishedPostDate, postPerPage.intValue(), pagesSize);
+    }
+
+    public UserProfile getUserUserProfileInCertainPage(UserProfile userProfile, int pageNumber) {
+        if(userProfile.getPagesSize() < pageNumber) throw new RuntimeException("pagina inexistente");
+        List<PublishedPostDao> publishedPost =getUserpublishedPostsByRange(userProfile.getOwner(), userProfile.getLowerBoundForPage(pageNumber), userProfile.getUpperBoundForPage(pageNumber));
+        return new UserProfile(userProfile, publishedPost);
+    }
+
+    //User search
+    public List<String> getUsersAutocomplete(String username){
+        ScanParams scanParams = new ScanParams();
+        List<String> jsonStringKeys = jedis.scan("0", scanParams.match("user:username:*" + username + "*").count(10)).getResult();
+        return jsonStringKeys.stream().map(keyString -> keyString.split(":")[2]).collect(Collectors.toList());
     }
 
 
