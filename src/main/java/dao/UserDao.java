@@ -4,13 +4,24 @@ public class UserDao {
     private String username;
     private String hashedPassword;
     private String email;
+    private String userId;
 
     public UserDao() {}
 
-    public UserDao(String username, String hashedPassword, String email) {
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public UserDao(String username, String hashedPassword, String email, String userId) {
         this.username = username;
         this.hashedPassword = hashedPassword;
         this.email = email;
+        this.userId = userId;
+
     }
 
     public String getEmail() {

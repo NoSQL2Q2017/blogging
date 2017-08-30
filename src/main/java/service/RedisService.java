@@ -81,11 +81,17 @@ public class RedisService {
         PublishedPostDao publishedPostDao = new PublishedPostDao(postDao);
         jedis.set("post:published:date:username:"+ owner.getUsername(), publishedPostDao.getPublishedDate());
         jedis.lpush("post:published:username:" + owner.getUsername(), mapperService.getJsonString(publishedPostDao));
+        jedis.set("post:url:" + postDao.getUrl(), mapperService.getJsonString(publishedPostDao));
     }
 
     public void deletePublishedPost(UserDao owner, PublishedPostDao publishedPostDao){
         jedis.lrem("post:published:username:" + owner.getUsername(), 1, mapperService.getJsonString(publishedPostDao));
+        jedis.del("post:url:" + publishedPostDao.getPost().getUrl());
         this.deletePost(owner, publishedPostDao.getPost());
+    }
+
+    public PublishedPostDao getPublishedPost(String url) {
+        return mapperService.getDao(this.jedis.get("post:url:" + url), PublishedPostDao.class).get();
     }
 
     public List<PublishedPostDao> getUserpublishedPosts(UserDao owner) {

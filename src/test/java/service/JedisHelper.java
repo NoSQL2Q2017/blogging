@@ -10,11 +10,11 @@ public class JedisHelper {
     }
 
     public UserDao getUserZaffa() {
-        return new UserDao("zaffa", "zaffaHashedPassword","jz@gmail.com");
+        return new UserDao("zaffa", "zaffaHashedPassword","jz@gmail.com", "zaffaId");
     }
 
     public UserDao getUserMaxi() {
-        return new UserDao("maxi", "d3p3g4r","mz@gmail.com");
+        return new UserDao("maxi", "d3p3g4r","mz@gmail.com", "maxiId");
     }
 
     public PostDao getPaper() {

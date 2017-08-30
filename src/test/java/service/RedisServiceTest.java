@@ -147,6 +147,17 @@ public class RedisServiceTest {
     }
 
     @Test
+    public void getPublishedPost(){
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        redisService.publishPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+
+        PublishedPostDao publishedPost = redisService.getPublishedPost(this.jedisHelper.getPaper().getUrl());
+
+
+        Assert.assertEquals(this.jedisHelper.getPaper(), publishedPost.getPost());
+    }
+
+    @Test
     public void deletePublishedPost(){
         redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
         redisService.publishPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
