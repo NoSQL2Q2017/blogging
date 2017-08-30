@@ -1,6 +1,8 @@
 package service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dao.PostDao;
+import dao.PublishedPostDao;
 import dao.UserDao;
 import org.junit.Assert;
 import org.junit.Before;
@@ -8,6 +10,8 @@ import org.junit.Test;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
 import redis.clients.jedis.Jedis;
+
+import java.util.List;
 
 public class RedisServiceTest {
 
@@ -28,6 +32,7 @@ public class RedisServiceTest {
 
     }
 
+    //User
     @Test
     public void addValidUser(){
         UserDao zaffa = this.jedisHelper.getUserZaffa();
@@ -106,4 +111,51 @@ public class RedisServiceTest {
         String ip = "192.168.1.23";
         redisService.logUser(zaffa.getUsername(), zaffa.getHashedPassword(), ip);
     }
+
+    //Post
+    @Test
+    public void createPost(){
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        List<PostDao> posts = redisService.getUserPosts(this.jedisHelper.getUserZaffa());
+
+        Assert.assertEquals(1, posts.size());
+        Assert.assertEquals(this.jedisHelper.getPaper(), posts.get(0));
+    }
+
+    @Test
+    public void deletePost(){
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        redisService.deletePost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        List<PostDao> posts = redisService.getUserPosts(this.jedisHelper.getUserZaffa());
+
+        Assert.assertTrue(posts.isEmpty());
+
+    }
+
+    @Test
+    public void publishedPost(){
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        redisService.publishPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        List<PostDao> posts = redisService.getUserPosts(this.jedisHelper.getUserZaffa());
+        List<PublishedPostDao> publishedPosts = redisService.getUserpublishedPosts(this.jedisHelper.getUserZaffa());
+
+
+        Assert.assertEquals(posts.get(0), publishedPosts.get(0).getPost());
+    }
+
+    @Test
+    public void deletePublishedPost(){
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        redisService.publishPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        List<PublishedPostDao> auxPublishedPosts = redisService.getUserpublishedPosts(this.jedisHelper.getUserZaffa());
+        redisService.deletePublishedPost(this.jedisHelper.getUserZaffa(), auxPublishedPosts.get(0));
+
+        List<PostDao> posts = redisService.getUserPosts(this.jedisHelper.getUserZaffa());
+        List<PublishedPostDao> publishedPosts = redisService.getUserpublishedPosts(this.jedisHelper.getUserZaffa());
+
+
+        Assert.assertTrue(posts.isEmpty());
+        Assert.assertTrue(publishedPosts.isEmpty());
+    }
+
 }
