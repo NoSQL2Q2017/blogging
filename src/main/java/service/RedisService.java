@@ -18,12 +18,12 @@ import java.util.stream.Collectors;
 
 public class RedisService {
     private static final int TEN_MINUTES_TTL = 600;
-    private ObjectMapper objectMapper;
+    private MapperService mapperService;
     private Jedis jedis;
 
-    public RedisService(Jedis jedis, ObjectMapper objectMapper) {
+    public RedisService(Jedis jedis, MapperService mapperService) {
         this.jedis = jedis;
-        this.objectMapper = objectMapper;
+        this.mapperService = mapperService;
     }
 
     //Users
@@ -35,18 +35,18 @@ public class RedisService {
         }
 
         Transaction transaction = jedis.multi();
-        transaction.set("user:username:" + userDao.getUsername(), this.getJsonString(userDao));
+        transaction.set("user:username:" + userDao.getUsername(), mapperService.getJsonString(userDao));
         transaction.set("consistency:email:" + userDao.getEmail(), "");
         transaction.exec();
     }
 
     public Optional<UserDao> getUser(String username) {
-        return this.getDao(jedis.get("user:username:" + username), UserDao.class);
+        return mapperService.getDao(jedis.get("user:username:" + username), UserDao.class);
     }
 
     public void logUser(String username, String hashedPassword, String ip) {
         String jsonUser = jedis.get("user:username:" + username);
-        Optional<UserDao> userDao = this.getDao(jsonUser, UserDao.class);
+        Optional<UserDao> userDao = mapperService.getDao(jsonUser, UserDao.class);
         if (!userDao.isPresent() || !userDao.get().getHashedPassword().equals(hashedPassword)) {
             throw new RuntimeException("User or password does not exist");
         }
@@ -66,25 +66,25 @@ public class RedisService {
 
     //Post
     public void createPost(UserDao owner, PostDao postDao) {
-        jedis.lpush("post:username:" + owner.getUsername(), this.getJsonString(postDao));
+        jedis.lpush("post:username:" + owner.getUsername(), mapperService.getJsonString(postDao));
     }
 
     public void deletePost(UserDao owner, PostDao postDao) {
-        jedis.lrem("post:username:" + owner.getUsername(), 1, this.getJsonString(postDao));
+        jedis.lrem("post:username:" + owner.getUsername(), 1, mapperService.getJsonString(postDao));
     }
 
     public List<PostDao> getUserPosts(UserDao owner) {
-        return this.getDaoList(jedis.lrange("post:username:" + owner.getUsername(), 0, -1), PostDao.class);
+        return mapperService.getDaoList(jedis.lrange("post:username:" + owner.getUsername(), 0, -1), PostDao.class);
     }
 
     public void publishPost(UserDao owner, PostDao postDao) {
         PublishedPostDao publishedPostDao = new PublishedPostDao(postDao);
         jedis.set("post:published:date:username:"+ owner.getUsername(), publishedPostDao.getPublishedDate());
-        jedis.lpush("post:published:username:" + owner.getUsername(), this.getJsonString(publishedPostDao));
+        jedis.lpush("post:published:username:" + owner.getUsername(), mapperService.getJsonString(publishedPostDao));
     }
 
     public void deletePublishedPost(UserDao owner, PublishedPostDao publishedPostDao){
-        jedis.lrem("post:published:username:" + owner.getUsername(), 1, this.getJsonString(publishedPostDao));
+        jedis.lrem("post:published:username:" + owner.getUsername(), 1, mapperService.getJsonString(publishedPostDao));
         this.deletePost(owner, publishedPostDao.getPost());
     }
 
@@ -93,7 +93,7 @@ public class RedisService {
     }
 
     public List<PublishedPostDao> getUserpublishedPostsByRange(UserDao owner, int lowerBound, int upperBound) {
-        return this.getDaoList(jedis.lrange("post:published:username:" + owner.getUsername(), lowerBound, upperBound), PublishedPostDao.class);
+        return mapperService.getDaoList(jedis.lrange("post:published:username:" + owner.getUsername(), lowerBound, upperBound), PublishedPostDao.class);
     }
 
     //User profile
@@ -117,32 +117,5 @@ public class RedisService {
         ScanParams scanParams = new ScanParams();
         List<String> jsonStringKeys = jedis.scan("0", scanParams.match("user:username:*" + username + "*").count(10)).getResult();
         return jsonStringKeys.stream().map(keyString -> keyString.split(":")[2]).collect(Collectors.toList());
-    }
-
-
-    //Move to Mapper Service
-    private String getJsonString(Object objectDao) {
-        try {
-            return objectMapper.writeValueAsString(objectDao);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private <T> Optional<T> getDao(String jsonUser, Class<T> clazz) {
-        if (jsonUser == null) return Optional.empty();
-        try {
-            return Optional.of(objectMapper.readValue(jsonUser, clazz));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
-    private <T> List<T> getDaoList(List<String> jsonList, Class<T> clazz) {
-        return jsonList.stream().map(jsonString -> this.getDao(jsonString, clazz))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
     }
 }

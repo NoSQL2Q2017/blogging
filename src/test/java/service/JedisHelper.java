@@ -24,4 +24,7 @@ public class JedisHelper {
     public PostDao getOtherPaper() {
         return new PostDao("despegar.com", "Data Lake", "smoke on the water");
     }
+
+    public PostDao getChebotkoPaper() { return new PostDao("DataStax", "Chebotko Methodology", "A Big Data Modeling Methodology for Apache Cassandra");
+    }
 }

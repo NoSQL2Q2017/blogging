@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dao.PostDao;
 import dao.PublishedPostDao;
 import dao.UserDao;
+import dao.UserProfile;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,6 +12,7 @@ import org.junit.Rule;
 import org.junit.rules.ExpectedException;
 import redis.clients.jedis.Jedis;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class RedisServiceTest {
@@ -25,7 +27,8 @@ public class RedisServiceTest {
     public void setUp(){
         this.jedis = new Jedis("localHost");
         this.jedis.flushDB();
-        this.redisService = new RedisService(jedis, new ObjectMapper());
+        MapperService mapperService = new MapperService(new ObjectMapper());
+        this.redisService = new RedisService(jedis, mapperService);
         this.jedisHelper = new JedisHelper();
         this.jedisHelper.boostrap(this.jedis);
 
@@ -157,6 +160,45 @@ public class RedisServiceTest {
         Assert.assertTrue(posts.isEmpty());
         Assert.assertTrue(publishedPosts.isEmpty());
     }
+
+    //User profile
+    @Test
+    public void userProfileInPageOneWithOnePostPerPage() {
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getOtherPaper());
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getChebotkoPaper());
+
+        redisService.publishPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        redisService.publishPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getOtherPaper());
+        redisService.publishPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getChebotkoPaper());
+
+        UserProfile zaffaProfile = redisService.getUserNewUserProfile(this.jedisHelper.getUserZaffa(), new BigDecimal(1));
+        Assert.assertEquals(3, zaffaProfile.getPagesSize());
+        Assert.assertEquals(1, zaffaProfile.getPublishedPost().size());
+        Assert.assertEquals(this.jedisHelper.getChebotkoPaper(), zaffaProfile.getPublishedPost().get(0).getPost());//LastPublishedPaper
+
+    }
+
+    //User profile
+    @Test
+    public void userProfileInPageTwoWithTwoPostPerPage() {
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getOtherPaper());
+        redisService.createPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getChebotkoPaper());
+
+        redisService.publishPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getPaper());
+        redisService.publishPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getOtherPaper());
+        redisService.publishPost(this.jedisHelper.getUserZaffa(), this.jedisHelper.getChebotkoPaper());
+
+        UserProfile zaffaProfilePageOne = redisService.getUserNewUserProfile(this.jedisHelper.getUserZaffa(), new BigDecimal(2));
+        UserProfile zaffaProfile = redisService.getUserUserProfileInCertainPage(zaffaProfilePageOne, 2);
+
+        Assert.assertEquals(2, zaffaProfile.getPagesSize());
+        Assert.assertEquals(1, zaffaProfile.getPublishedPost().size());
+        Assert.assertEquals(this.jedisHelper.getPaper(), zaffaProfile.getPublishedPost().get(0).getPost());//FirstPublishedPaper
+
+    }
+
 
     //User autocomplete
     @Test
