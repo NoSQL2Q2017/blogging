@@ -112,7 +112,7 @@ public class RedisService {
         return new UserProfile(userProfile, publishedPost);
     }
 
-    //User search
+    //User autocomplete
     public List<String> getUsersAutocomplete(String username){
         ScanParams scanParams = new ScanParams();
         List<String> jsonStringKeys = jedis.scan("0", scanParams.match("user:username:*" + username + "*").count(10)).getResult();
